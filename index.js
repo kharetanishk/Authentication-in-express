@@ -5,7 +5,7 @@ app.use(express.json());
 let users = [];
 let reqcount = 0;
 //gnerating token function
-function generateToken(length = 16) {
+function generateToken(length = 22) {
   const chars =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   let token = "";
@@ -16,12 +16,20 @@ function generateToken(length = 16) {
 }
 
 app.post("/signup", function (req, res) {
-  const username = req.body.username.replace(/\s+/g, "");
-  const password = req.body.password.replace(/\s+/g, "");
-  // so we have just created some values that the user will fill
+  //e have to first create some values that the user will fill
+  const username = req.body.username;
+  const password = req.body.password;
 
-  //lets have one check that the username should be unique
-  if (users.find((u) => u.username === username)) {
+  //after filling the values we have to check that the users hasnt skipped any of it
+  if (username == null) {
+    res.json({
+      msg: "usersname cannot be empty",
+    });
+  } else if (password == null) {
+    res.json({
+      msg: "pass ord cannot be empty",
+    });
+  } else if (users.find((u) => u.username === username)) {
     res.json({
       msg: "the user already exists",
       users,
@@ -41,31 +49,21 @@ app.post("/signup", function (req, res) {
 
 //
 app.post("/signin", function (req, res) {
-  const username = req.body.username.replace(/\s+/g, "");
-  const password = req.body.password.replace(/\s+/g, "");
+  const username = req.body.username;
+  const password = req.body.password;
 
   //lets have a check whether the username and password is correct or not
 
-  const reaUser = users.find(
+  const realUser = users.find(
     (u) => u.username == username && u.password == password
   );
-  reaUser.reqcount = reqcount;
-  if (reaUser.reqcount) {
-    res.json({
-      msg: "your data has been registered already",
-      reaUser,
-    });
-    return;
-  }
-
-  if (reaUser) {
-    reqcount++;
+  if (realUser) {
     const token = generateToken();
-    reaUser.token = token;
+    realUser.token = token;
     res.json({
       msg: "the token has been generated for the user",
-      reaUser,
       token,
+      users,
     });
     return;
   } else {
@@ -75,6 +73,25 @@ app.post("/signin", function (req, res) {
   }
 });
 
+///getting the username info through tokens
+app.get("/me", function (req, res) {
+  const token = req.headers.token;
+  console.log(token);
+  console.log(users);
+  const existingUser = users.find((u) => u.token == token);
+  if (existingUser) {
+    res.json({
+      username: existingUser.username,
+      password: existingUser.password,
+    });
+  } else {
+    res.json({
+      msg: "invalid authentication",
+    });
+  }
+});
+
+//app link
 app.listen(port, () => {
   console.log(`the app is listening at port ${port}`);
 });
