@@ -15,6 +15,32 @@ function requestCountMiddleware(req, res, next) {
   next();
 }
 app.use(requestCountMiddleware);
+
+//middle ware
+function authMiddleware(req, res, next) {
+  const token = req.headers.token;
+  if (!token) {
+    return res.json({
+      msg: "the token is missing",
+    });
+  }
+  try {
+    const decode = jwt.verify(token, JWT_SECRET);
+    const username = decode.username;
+
+    const user = users.find((u) => u.username === username);
+    if (!user) {
+      return res.json({
+        msg: "invalid user",
+      });
+    }
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(403).json({ msg: "Invalid or expired token." });
+  }
+}
+
 //gnerating token function
 //as we have switched to jwt so we dont need this generrate token any more
 // function generateToken(length = 22) {
@@ -121,33 +147,43 @@ app.post("/signin", async function (req, res) {
 });
 
 ///getting the username info through tokens
-app.get("/me", function (req, res) {
-  const token = req.headers.token;
+app.get("/me", authMiddleware, function (req, res) {
+  const verifyinguser = users.find((u) => u.username === req.user.username);
+  // console.log(verifyinguser);
+  if (verifyinguser.username === req.user.username) {
+    res.json({
+      username: verifyinguser.username,
+      password: verifyinguser.password,
+    });
+  } else {
+    return res.json({
+      msg: "invalid user",
+    });
+  }
+  // const token = req.headers.token;
   //we are using try and catch because If the token is invalid or expired, it will crash my
   // server. And if i don’t catch that error with a try...catch,
   // your Express app will throw an unhandled exception —
   // and crash the server or hang the response.
-  try {
-    const decodedtoken = jwt.verify(token, JWT_SECRET);
-    // console.log(decodedtoken)
-    const username = decodedtoken.username;
-    // console.log(username)
-    const existingUser = users.find((u) => u.username === username);
-    //finding the user with the token
-
-    if (existingUser) {
-      return res.json({
-        username: existingUser.username,
-        // password: existingUser.password,
-        reqcount,
-      });
-    } else {
-      return res.json({ msg: "Invalid authentication" });
-    }
-  } catch (err) {
-    return res.status(401).json({ msg: "Invalid or expired token" });
-  }
-
+  // try {
+  //   const decodedtoken = jwt.verify(token, JWT_SECRET);
+  //   // console.log(decodedtoken)
+  //   const username = decodedtoken.username;
+  //   // console.log(username)
+  //   const existingUser = users.find((u) => u.username === username);
+  //   //finding the user with the token
+  // if (existingUser) {
+  // return res.json({
+  //       username: existingUser.username,
+  //       // password: existingUser.password,
+  //       reqcount,
+  //     });
+  //   } else {
+  //     return res.json({ msg: "Invalid authentication" });
+  //   }
+  // } catch (err) {
+  //   return res.status(401).json({ msg: "Invalid or expired token" });
+  // }
   // const decodedtoken = jwt.verify(token, JWT_SECRET);
   // // console.log(decodedtoken);
   // const username = decodedtoken.username;
